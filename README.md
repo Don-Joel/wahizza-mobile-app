@@ -1,5 +1,7 @@
 # Wahizza Mobile App
 
+🍕 Modern mobile app for Wahizza pizzeria built with React Native & Expo SDK 54. Features menu browsing, online ordering, Google SSO authentication, and a Pizza Points loyalty system. Dark mode UI with premium black & gold design.
+
 A high-performance React Native mobile app for Wahizza pizza shop with Shopify integration and Supabase-powered loyalty system.
 
 ## Features
@@ -7,13 +9,13 @@ A high-performance React Native mobile app for Wahizza pizza shop with Shopify i
 - 🍕 **Menu & Ordering**: Fetch products from Shopify Storefront API
 - 🎁 **Loyalty System**: Pizza Points - earn 1 point per $1 spent
 - 🎨 **Dark Mode Design**: Urban-modern aesthetic with vibrant orange/red accents
-- 📱 **Authentication**: Phone number or email login
+- 📱 **Authentication**: Google SSO login
 - 🛒 **Shopping Cart**: Persistent cart with AsyncStorage
 - 📊 **Rewards Dashboard**: Track points and spending
 
 ## Tech Stack
 
-- **Framework**: React Native with Expo
+- **Framework**: React Native with Expo SDK 54
 - **Navigation**: Expo Router
 - **Styling**: NativeWind (Tailwind CSS)
 - **Backend**: Shopify Storefront API + Supabase
