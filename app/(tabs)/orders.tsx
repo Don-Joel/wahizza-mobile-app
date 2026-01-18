@@ -2,259 +2,194 @@ import React from 'react';
 import {
   View,
   Text,
+  FlatList,
   StyleSheet,
-  ScrollView,
-  SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
-import { mockOrders } from '../../src/data/mockData';
-import { Order, OrderStatus } from '../../src/types';
-import { colors, spacing, borderRadius, typography } from '../../src/theme/colors';
 
-const getStatusColor = (status: OrderStatus) => {
-  switch (status) {
-    case OrderStatus.PENDING:
-    case OrderStatus.CONFIRMED:
-      return colors.info;
-    case OrderStatus.PREPARING:
-      return colors.warning;
-    case OrderStatus.READY:
-      return colors.success;
-    case OrderStatus.COMPLETED:
-      return colors.textSecondary;
-    case OrderStatus.CANCELLED:
-      return colors.error;
-    default:
-      return colors.textSecondary;
-  }
-};
-
-const getStatusIcon = (status: OrderStatus) => {
-  switch (status) {
-    case OrderStatus.PENDING:
-      return 'time-outline';
-    case OrderStatus.CONFIRMED:
-      return 'checkmark-circle-outline';
-    case OrderStatus.PREPARING:
-      return 'restaurant-outline';
-    case OrderStatus.READY:
-      return 'checkmark-done-circle-outline';
-    case OrderStatus.COMPLETED:
-      return 'checkmark-circle';
-    case OrderStatus.CANCELLED:
-      return 'close-circle-outline';
-    default:
-      return 'help-circle-outline';
-  }
-};
-
-const OrderCard: React.FC<{ order: Order }> = ({ order }) => {
-  const statusColor = getStatusColor(order.status);
-  const statusIcon = getStatusIcon(order.status);
-
-  return (
-    <View style={styles.orderCard}>
-      <View style={styles.orderHeader}>
-        <View style={styles.orderHeaderLeft}>
-          <Ionicons name={statusIcon as any} size={24} color={statusColor} />
-          <View style={styles.orderHeaderText}>
-            <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-            <Text style={styles.orderDate}>
-              {order.createdAt.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </Text>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
-          <Text style={[styles.statusText, { color: statusColor }]}>
-            {order.status}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.orderDetails}>
-        <View style={styles.orderDetailRow}>
-          <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.orderDetailText}>
-            {order.customerInfo.address.street}, {order.customerInfo.address.city}
-          </Text>
-        </View>
-        {order.estimatedDelivery && (
-          <View style={styles.orderDetailRow}>
-            <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.orderDetailText}>
-              Est. delivery: {order.estimatedDelivery.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.orderFooter}>
-        <Text style={styles.orderItems}>
-          {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-        </Text>
-        <Text style={styles.orderTotal}>${order.totalPrice.toFixed(2)}</Text>
-      </View>
-    </View>
-  );
-};
+const mockOrders = [
+  {
+    id: '1',
+    date: '2024-01-15',
+    total: 45.98,
+    items: [
+      { name: 'Chimi Pizza (Large)', qty: 1 },
+      { name: 'Coca-Cola', qty: 2 },
+    ],
+    status: 'Delivered',
+  },
+  {
+    id: '2',
+    date: '2024-01-10',
+    total: 22.50,
+    items: [
+      { name: 'Jamaican Pizza (Medium)', qty: 1 },
+    ],
+    status: 'Delivered',
+  },
+  {
+    id: '3',
+    date: '2024-01-05',
+    total: 60.00,
+    items: [
+      { name: 'Chicken Parmigiana', qty: 2 },
+      { name: 'Caesar Salad', qty: 1 },
+    ],
+    status: 'Cancelled',
+  },
+];
 
 export default function OrdersScreen() {
-  const orders = mockOrders;
+  const renderOrderItem = ({ item }: { item: typeof mockOrders[0] }) => (
+    <View style={styles.orderCard}>
+      <View style={styles.orderHeader}>
+        <Text style={styles.orderId}>ORDER #{item.id}</Text>
+        <Text style={styles.orderDate}>{item.date}</Text>
+      </View>
+      <View style={styles.itemsList}>
+        {item.items.map((foodItem, index) => (
+          <Text key={index} style={styles.itemText}>
+            {foodItem.qty}x {foodItem.name}
+          </Text>
+        ))}
+      </View>
+      <View style={styles.orderFooter}>
+        <Text style={styles.orderTotal}>TOTAL: ${item.total.toFixed(2)}</Text>
+        <View style={[styles.statusBadge, styles[`status${item.status}`]]}>
+          <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+        </View>
+      </View>
+      <TouchableOpacity style={styles.reorderButton}>
+        <Text style={styles.reorderButtonText}>REORDER</Text>
+        <Ionicons name="refresh" size={16} color="#C9A227" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
-        style={styles.header}
-      >
-        <Text style={styles.headerTitle}>Order History</Text>
-        <Text style={styles.headerSubtitle}>
-          {orders.length} order{orders.length !== 1 ? 's' : ''}
-        </Text>
-      </LinearGradient>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>YOUR ORDERS</Text>
+        <Text style={styles.headerSubtitle}>TRACK YOUR DELICIOUS HISTORY</Text>
+      </View>
 
-      {orders.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={80} color={colors.textLight} />
-          <Text style={styles.emptyTitle}>No orders yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Your order history will appear here
-          </Text>
-        </View>
-      ) : (
-        <FlashList
-          data={orders}
-          renderItem={({ item }) => <OrderCard order={item} />}
-          estimatedItemSize={180}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </SafeAreaView>
+      <FlatList
+        data={mockOrders}
+        renderItem={renderOrderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#000000',
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.md,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    backgroundColor: '#000000',
+    alignItems: 'center',
   },
   headerTitle: {
-    ...typography.h1,
-    color: colors.white,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 2,
     marginBottom: 4,
+    textAlign: 'center',
   },
   headerSubtitle: {
-    ...typography.caption,
-    color: colors.white,
-    opacity: 0.9,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+    textAlign: 'center',
   },
-  list: {
-    padding: spacing.md,
+  listContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   orderCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#111111',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
   },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: 10,
   },
-  orderHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  orderHeaderText: {
-    marginLeft: spacing.sm,
-  },
-  orderNumber: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: 2,
+  orderId: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   orderDate: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: '#888888',
   },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
+  itemsList: {
+    marginBottom: 15,
   },
-  statusText: {
-    ...typography.small,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  orderDetails: {
-    marginBottom: spacing.md,
-    paddingLeft: 32,
-  },
-  orderDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  orderDetailText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginLeft: spacing.xs,
+  itemText: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    marginBottom: 4,
   },
   orderFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  orderItems: {
-    ...typography.body,
-    color: colors.textSecondary,
+    borderTopColor: '#333333',
+    paddingTop: 15,
+    marginTop: 10,
   },
   orderTotal: {
-    ...typography.h3,
-    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#C9A227',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  statusDelivered: {
+    backgroundColor: 'rgba(76,175,80,0.2)',
+  },
+  statusCancelled: {
+    backgroundColor: 'rgba(235,66,33,0.2)',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  reorderButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.xl,
+    justifyContent: 'center',
+    marginTop: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C9A227',
+    gap: 8,
   },
-  emptyTitle: {
-    ...typography.h2,
-    color: colors.text,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  emptySubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  reorderButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#C9A227',
+    letterSpacing: 1,
   },
 });

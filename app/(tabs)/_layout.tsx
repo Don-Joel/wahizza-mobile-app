@@ -8,12 +8,19 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#EB4221',
-        tabBarInactiveTintColor: '#666666',
+        tabBarActiveTintColor: '#C9A227',
+        tabBarInactiveTintColor: '#888888',
         tabBarStyle: {
-          backgroundColor: '#1A1A1A',
-          borderTopColor: '#2A2A2A',
+          backgroundColor: '#000000',
+          borderTopColor: '#111111',
           borderTopWidth: 1,
+          height: 85,
+          paddingTop: 10,
+          paddingBottom: 25,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
         },
         headerShown: false,
       }}
@@ -45,8 +52,17 @@ export default function TabLayout() {
           ),
           tabBarBadge: totalItems > 0 ? totalItems : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: '#EB4221',
+            backgroundColor: '#9B2335',
           },
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="receipt" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen

@@ -2,395 +2,246 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  KeyboardAvoidingView,
-  Platform,
+  Image,
+  StyleSheet,
+  Dimensions,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useCartContext } from '../../src/context/CartContext';
-import { mockProducts, availableToppings } from '../../src/data/mockData';
-import { CartItem } from '../../src/types';
-import { colors, spacing, borderRadius, typography } from '../../src/theme/colors';
-import { Button } from '../../src/components/Button';
+import { useCart } from '../../src/context/CartContext';
+import { mockProducts } from '../../src/data/mockData';
+
+const { width } = Dimensions.get('window');
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { addItem } = useCartContext();
+  const { addItem } = useCart();
 
-  const product = mockProducts.find((p) => p.id === id);
-  const [selectedVariant, setSelectedVariant] = useState(
-    product?.variants[0] || null
-  );
-  const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
-  const [quantity, setQuantity] = useState(1);
-  const [specialInstructions, setSpecialInstructions] = useState('');
+  const product = mockProducts.find(p => p.id === id);
 
-  if (!product || !selectedVariant) {
+  if (!product) {
     return (
-      <View style={styles.center}>
-        <Text>Product not found</Text>
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Product not found!</Text>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="close" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
     );
   }
 
-  const toggleTopping = (topping: string) => {
-    if (selectedToppings.includes(topping)) {
-      setSelectedToppings(selectedToppings.filter((t) => t !== topping));
-    } else {
-      setSelectedToppings([...selectedToppings, topping]);
-    }
-  };
+  const [selectedVariant, setSelectedVariant] = useState(product.variants[0]);
+  const [quantity, setQuantity] = useState(1);
+
+  const totalPrice = parseFloat(selectedVariant.price) * quantity;
 
   const handleAddToCart = () => {
-    const cartItem: CartItem = {
+    addItem({
       id: `${product.id}-${selectedVariant.id}-${Date.now()}`,
-      product,
+      product: {
+        id: product.id,
+        title: product.title,
+        imageURL: product.imageURL,
+      },
       variant: selectedVariant,
       quantity,
-      customizations: {
-        toppings: selectedToppings.length > 0 ? selectedToppings : undefined,
-        specialInstructions: specialInstructions || undefined,
-      },
-    };
-
-    addItem(cartItem);
-    router.back();
+      customizations: {},
+    });
+    Alert.alert(
+      'Added to Cart',
+      `${quantity}x ${product.title} (${selectedVariant.title}) added to your cart.`,
+      [{ text: 'OK', onPress: () => router.back() }]
+    );
   };
 
-  const price = parseFloat(selectedVariant.price);
-
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
-        <ScrollView
-          style={styles.flex}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.white} />
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Image */}
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: product.imageURL || '' }} style={styles.image} />
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
+        </View>
 
-          <Image
-            source={{ uri: product.imageURL || '' }}
-            style={styles.image}
-            contentFit="cover"
-          />
+        {/* Content */}
+        <View style={styles.content}>
+          <Text style={styles.title}>{product.title}</Text>
+          <Text style={styles.description}>{product.description}</Text>
 
-          <View style={styles.content}>
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>{product.title}</Text>
-                {product.tags?.includes('popular') && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>Popular</Text>
-                  </View>
-                )}
+          {/* Size Selection */}
+          {product.variants.length > 1 && (
+            <>
+              <Text style={styles.sectionTitle}>SELECT SIZE</Text>
+              <View style={styles.sizeOptions}>
+                {product.variants.map((variant) => (
+                  <TouchableOpacity
+                    key={variant.id}
+                    style={[styles.sizeBtn, selectedVariant.id === variant.id && styles.sizeBtnActive]}
+                    onPress={() => setSelectedVariant(variant)}
+                  >
+                    <Text style={[styles.sizeName, selectedVariant.id === variant.id && styles.sizeNameActive]}>
+                      {variant.title}
+                    </Text>
+                    <Text style={[styles.sizePrice, selectedVariant.id === variant.id && styles.sizePriceActive]}>
+                      ${parseFloat(variant.price).toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <Text style={styles.price}>${price.toFixed(2)}</Text>
-            </View>
+            </>
+          )}
 
-            <Text style={styles.description}>{product.description}</Text>
-
-            {product.variants.length > 1 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Size</Text>
-                <View style={styles.variantGrid}>
-                  {product.variants.map((variant) => (
-                    <TouchableOpacity
-                      key={variant.id}
-                      style={[
-                        styles.variantButton,
-                        selectedVariant.id === variant.id &&
-                          styles.variantButtonActive,
-                      ]}
-                      onPress={() => setSelectedVariant(variant)}
-                    >
-                      <Text
-                        style={[
-                          styles.variantText,
-                          selectedVariant.id === variant.id &&
-                            styles.variantTextActive,
-                        ]}
-                      >
-                        {variant.size || variant.title}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.variantPrice,
-                          selectedVariant.id === variant.id &&
-                            styles.variantPriceActive,
-                        ]}
-                      >
-                        ${parseFloat(variant.price).toFixed(2)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {product.category === 'Pizza' && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Toppings</Text>
-                <View style={styles.toppingsGrid}>
-                  {availableToppings.map((topping) => (
-                    <TouchableOpacity
-                      key={topping}
-                      style={[
-                        styles.toppingButton,
-                        selectedToppings.includes(topping) &&
-                          styles.toppingButtonActive,
-                      ]}
-                      onPress={() => toggleTopping(topping)}
-                    >
-                      <Ionicons
-                        name={
-                          selectedToppings.includes(topping)
-                            ? 'checkmark-circle'
-                            : 'ellipse-outline'
-                        }
-                        size={20}
-                        color={
-                          selectedToppings.includes(topping)
-                            ? colors.primary
-                            : colors.textSecondary
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.toppingText,
-                          selectedToppings.includes(topping) &&
-                            styles.toppingTextActive,
-                        ]}
-                      >
-                        {topping}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Quantity</Text>
-              <View style={styles.quantityControls}>
-                <TouchableOpacity
-                  style={[
-                    styles.quantityButton,
-                    quantity === 1 && styles.quantityButtonDisabled,
-                  ]}
-                  onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity === 1}
-                >
-                  <Ionicons
-                    name="remove-circle"
-                    size={32}
-                    color={quantity === 1 ? colors.textLight : colors.primary}
-                  />
-                </TouchableOpacity>
-                <Text style={styles.quantity}>{quantity}</Text>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => setQuantity(quantity + 1)}
-                >
-                  <Ionicons name="add-circle" size={32} color={colors.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <View style={styles.footerContent}>
-            <View>
-              <Text style={styles.footerLabel}>Total</Text>
-              <Text style={styles.footerPrice}>
-                ${(price * quantity).toFixed(2)}
-              </Text>
-            </View>
-            <Button
-              title="Add to Cart"
-              onPress={handleAddToCart}
-              size="large"
-              style={styles.addButton}
-            />
+          {/* Quantity */}
+          <Text style={styles.sectionTitle}>QUANTITY</Text>
+          <View style={styles.quantityRow}>
+            <TouchableOpacity
+              style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
+              onPress={() => setQuantity(Math.max(1, quantity - 1))}
+              disabled={quantity <= 1}
+            >
+              <Ionicons name="remove" size={24} color={quantity <= 1 ? '#333333' : '#FFFFFF'} />
+            </TouchableOpacity>
+            <Text style={styles.qtyValue}>{quantity}</Text>
+            <TouchableOpacity
+              style={styles.qtyBtn}
+              onPress={() => setQuantity(quantity + 1)}
+            >
+              <Ionicons name="add" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </ScrollView>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.footerPrice}>
+          <Text style={styles.footerLabel}>TOTAL</Text>
+          <Text style={styles.footerValue}>${totalPrice.toFixed(2)}</Text>
+        </View>
+        <TouchableOpacity style={styles.addToCartBtn} onPress={handleAddToCart}>
+          <Text style={styles.addToCartText}>ADD TO CART</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#000000',
   },
-  flex: {
-    flex: 1,
+  imageContainer: {
+    position: 'relative',
   },
-  scrollContent: {
-    paddingBottom: 100,
+  image: {
+    width: width,
+    height: width * 0.8,
   },
-  backButton: {
+  backBtn: {
     position: 'absolute',
-    top: 60,
-    left: spacing.md,
-    zIndex: 10,
+    top: 50,
+    right: 20,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.overlay,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  image: {
-    width: '100%',
-    height: 300,
-    backgroundColor: colors.border,
   },
   content: {
-    padding: spacing.md,
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    marginTop: -20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    padding: 20,
+    backgroundColor: '#000000',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -24,
   },
   title: {
-    ...typography.h1,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-    marginTop: spacing.xs,
-  },
-  badgeText: {
-    ...typography.small,
-    color: colors.white,
-    fontWeight: '600',
-  },
-  price: {
-    ...typography.h2,
-    color: colors.primary,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 12,
   },
   description: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
+    fontSize: 15,
+    color: '#888888',
     lineHeight: 24,
-  },
-  section: {
-    marginBottom: spacing.lg,
+    marginBottom: 24,
   },
   sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.md,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  variantGrid: {
+  sizeOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 12,
+    marginBottom: 24,
   },
-  variantButton: {
+  sizeBtn: {
     flex: 1,
-    minWidth: '30%',
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
+    minWidth: '45%',
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#111111',
   },
-  variantButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight + '20',
+  sizeBtnActive: {
+    borderColor: '#C9A227',
+    backgroundColor: 'rgba(201,162,39,0.1)',
   },
-  variantText: {
-    ...typography.bodyBold,
-    color: colors.text,
+  sizeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
-  variantTextActive: {
-    color: colors.primary,
+  sizeNameActive: {
+    color: '#C9A227',
   },
-  variantPrice: {
-    ...typography.caption,
-    color: colors.textSecondary,
+  sizePrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#888888',
   },
-  variantPriceActive: {
-    color: colors.primary,
+  sizePriceActive: {
+    color: '#FFFFFF',
   },
-  toppingsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  toppingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    marginBottom: spacing.sm,
-  },
-  toppingButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight + '20',
-  },
-  toppingText: {
-    ...typography.body,
-    color: colors.text,
-    marginLeft: spacing.xs,
-  },
-  toppingTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  quantityControls: {
+  quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 24,
+    marginBottom: 100,
   },
-  quantityButton: {
-    padding: spacing.xs,
+  qtyBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#111111',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  quantityButtonDisabled: {
-    opacity: 0.3,
+  qtyBtnDisabled: {
+    opacity: 0.5,
   },
-  quantity: {
-    ...typography.h2,
-    color: colors.text,
-    marginHorizontal: spacing.lg,
-    minWidth: 40,
+  qtyValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    minWidth: 50,
     textAlign: 'center',
   },
   footer: {
@@ -398,38 +249,41 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.cardBackground,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    padding: spacing.md,
-    paddingBottom: spacing.lg,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  footerContent: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 34,
+    backgroundColor: '#111111',
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
   },
+  footerPrice: {},
   footerLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 12,
+    color: '#888888',
   },
-  footerPrice: {
-    ...typography.h2,
-    color: colors.primary,
+  footerValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#C9A227',
   },
-  addButton: {
-    flex: 1,
-    marginLeft: spacing.md,
+  addToCartBtn: {
+    backgroundColor: '#9B2335',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 12,
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
+  addToCartText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginTop: 50,
+    fontSize: 18,
   },
 });

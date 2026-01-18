@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services/auth';
+import { authService, UserData } from '../services/auth';
 import { User } from '../types';
 import { loyaltyService } from '../services/loyalty';
 
@@ -8,6 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithPhone: (phone: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, phone?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -44,6 +45,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithPhone = async (phone: string) => {
     await authService.signInWithPhone(phone);
+    await loadUser();
+  };
+
+  const signInWithGoogle = async () => {
+    // Mock Google sign in - creates a demo user
+    const mockUserData = await authService.signInWithEmail('demo@wahizza.com', 'demo');
+    if (mockUserData) {
+      const userData = await loyaltyService.getUser(mockUserData.id);
+      setUser(userData);
+    }
   };
 
   const signUp = async (email: string, password: string, phone?: string) => {
@@ -67,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         signIn,
         signInWithPhone,
+        signInWithGoogle,
         signUp,
         signOut,
         refreshUser,

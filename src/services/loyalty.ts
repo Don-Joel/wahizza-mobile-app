@@ -1,17 +1,15 @@
-import { supabase } from '../config/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User, LoyaltyTransaction } from '../types';
+
+const POINTS_KEY = (userId: string) => `wahizza_points_${userId}`;
+const TRANSACTIONS_KEY = (userId: string) => `wahizza_transactions_${userId}`;
+const USER_DATA_KEY = (userId: string) => `wahizza_user_${userId}`;
 
 export const loyaltyService = {
   async getUserPoints(userId: string): Promise<number> {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('pizza_points')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      return data?.pizza_points || 0;
+      const pointsStr = await AsyncStorage.getItem(POINTS_KEY(userId));
+      return pointsStr ? parseInt(pointsStr, 10) : 0;
     } catch (error) {
       console.error('Error fetching user points:', error);
       return 0;
@@ -20,22 +18,29 @@ export const loyaltyService = {
 
   async getUser(userId: string): Promise<User | null> {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
+      const userDataStr = await AsyncStorage.getItem(USER_DATA_KEY(userId));
+      if (userDataStr) {
+        const data = JSON.parse(userDataStr);
+        return {
+          id: data.id || userId,
+          email: data.email || null,
+          phone: data.phone || null,
+          pizzaPoints: data.pizzaPoints || 0,
+          totalSpent: data.totalSpent || 0,
+          createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        };
+      }
       
-      return data ? {
-        id: data.id,
-        email: data.email,
-        phone: data.phone,
-        pizzaPoints: data.pizza_points,
-        totalSpent: data.total_spent,
-        createdAt: new Date(data.created_at),
-      } : null;
+      // Return default user if not found
+      const points = await this.getUserPoints(userId);
+      return {
+        id: userId,
+        email: null,
+        phone: null,
+        pizzaPoints: points,
+        totalSpent: 0,
+        createdAt: new Date(),
+      };
     } catch (error) {
       console.error('Error fetching user:', error);
       return null;
@@ -45,54 +50,47 @@ export const loyaltyService = {
   async earnPoints(userId: string, amount: number, orderId?: string): Promise<void> {
     try {
       const points = Math.floor(amount); // 1 point per $1
+      const currentPoints = await this.getUserPoints(userId);
+      const newPoints = currentPoints + points;
 
-      // Update user points
-      const { error: updateError } = await supabase.rpc('increment_points', {
-        user_id: userId,
-        points_to_add: points,
-        amount_to_add: amount,
+      await AsyncStorage.setItem(POINTS_KEY(userId), newPoints.toString());
+
+      // Update total spent
+      const userDataStr = await AsyncStorage.getItem(USER_DATA_KEY(userId));
+      const userData = userDataStr ? JSON.parse(userDataStr) : { totalSpent: 0 };
+      userData.totalSpent = (userData.totalSpent || 0) + amount;
+      userData.pizzaPoints = newPoints;
+      await AsyncStorage.setItem(USER_DATA_KEY(userId), JSON.stringify(userData));
+
+      // Add transaction
+      const transactionsStr = await AsyncStorage.getItem(TRANSACTIONS_KEY(userId));
+      const transactions: LoyaltyTransaction[] = transactionsStr ? JSON.parse(transactionsStr) : [];
+      transactions.unshift({
+        id: `tx_${Date.now()}`,
+        userId,
+        points,
+        type: 'earned',
+        orderId: orderId || undefined,
+        description: `Earned ${points} points from $${amount.toFixed(2)} purchase`,
+        createdAt: new Date(),
       });
-
-      if (updateError) throw updateError;
-
-      // Create transaction record
-      const { error: transactionError } = await supabase
-        .from('loyalty_transactions')
-        .insert({
-          user_id: userId,
-          points,
-          type: 'earned',
-          order_id: orderId,
-          description: `Earned ${points} points from $${amount.toFixed(2)} purchase`,
-        });
-
-      if (transactionError) throw transactionError;
+      await AsyncStorage.setItem(TRANSACTIONS_KEY(userId), JSON.stringify(transactions));
     } catch (error) {
       console.error('Error earning points:', error);
-      throw error;
     }
   },
 
   async getTransactionHistory(userId: string): Promise<LoyaltyTransaction[]> {
     try {
-      const { data, error } = await supabase
-        .from('loyalty_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      return data?.map((t: any) => ({
-        id: t.id,
-        userId: t.user_id,
-        points: t.points,
-        type: t.type,
-        orderId: t.order_id,
-        description: t.description,
-        createdAt: new Date(t.created_at),
-      })) || [];
+      const transactionsStr = await AsyncStorage.getItem(TRANSACTIONS_KEY(userId));
+      if (transactionsStr) {
+        const transactions = JSON.parse(transactionsStr);
+        return transactions.map((t: any) => ({
+          ...t,
+          createdAt: new Date(t.createdAt),
+        }));
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching transaction history:', error);
       return [];
